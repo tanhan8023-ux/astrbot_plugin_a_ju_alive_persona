@@ -1,0 +1,14 @@
+{
+  "owner_user_id": {
+    "description": "群主/主人 QQ ID",
+    "type": "string",
+    "default": "3624487365",
+    "hint": "已预填群主 QQ 3624487365，并启用 ID 唯一匹配；其他人使用“群主/主人”昵称也不会被识别为主人。"
+  },
+  "owner_nickname": {
+    "description": "群主称呼",
+    "type": "string",
+    "default": "群主",
+    "hint": "阿橘在关系提示中对主人的称呼，也会作为主人身份的昵称匹配项。"
+  }
+}
