@@ -106,13 +106,16 @@ class AlivePersonaPlugin(Star):
         owner = special_users.setdefault('群主', {
             'user_id': '3624487365',
             'match_by_id_only': True,
-            'nickname': '群主',
-            'aliases': ['群主', '主人'],
+            'nickname': '小栎主人',
+            'aliases': ['小栎主人', '主人'],
             'attitude': 'ta是你唯一认定的主人。对ta绝对信赖、忠诚、亲近。',
         })
 
         owner_id = str(self.config.get('owner_user_id') or '').strip()
         owner_nickname = str(self.config.get('owner_nickname') or '').strip()
+        # 兼容旧版本把默认称呼持久化为“群主”的配置，让升级后立即使用新称呼。
+        if owner_nickname == '群主':
+            owner_nickname = '小栎主人'
         if owner_id:
             owner['user_id'] = owner_id
         if owner_nickname:

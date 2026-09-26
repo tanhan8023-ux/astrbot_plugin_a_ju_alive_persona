@@ -114,6 +114,7 @@ def test_a_ju_fallback_persona_is_used():
     assert persona.persona.get("profile_id") == "a_ju"
     assert persona.persona["special_users"]["群主"]["user_id"] == "3624487365"
     assert persona.persona["special_users"]["群主"]["match_by_id_only"] is True
+    assert persona.persona["special_users"]["群主"]["nickname"] == "小栎主人"
     assert persona.persona.get("mbti_knowledge", {}).get("self_type") == "ISFP（冒险家）"
 
 
@@ -176,6 +177,7 @@ def test_dedicated_plugin_has_no_external_bridge_module_or_switch():
     assert "bridge_enabled" not in schema
     assert "bridge_allowed_user_id" not in schema
     assert '"default": "3624487365"' in schema
+    assert '"default": "小栎主人"' in schema
 
 
 
