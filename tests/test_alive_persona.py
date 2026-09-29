@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 import uuid
 
+from a_ju_alive_persona.current_affairs import CurrentAffairs
 from a_ju_alive_persona.living_state import LivingState
 from a_ju_alive_persona.memory import MemorySystem
 from a_ju_alive_persona.persona import PersonaEngine
@@ -40,32 +41,23 @@ def test_memory_extracts_nickname_preference_and_plan():
     assert "希望你记住" in text
 
 
-def test_special_user_matches_owner_id_name_nickname_and_alias():
+def test_special_user_matches_only_xiaoli_owner_id():
     special_users = {
-        "群主": {
-            "user_id": "1001",
-            "nickname": "主人",
-            "aliases": ["群主大人"],
-            "attitude": "对群主绝对信赖",
-        }
-    }
-
-    assert match_special_user(special_users, "1001", "别人")["key"] == "群主"
-    assert match_special_user(special_users, "2002", "群主大人")["key"] == "群主"
-    assert match_special_user(special_users, "2002", "路人", "主人")["key"] == "群主"
-    assert match_special_user(special_users, "2002", "路人") is None
-    assert "绝对信赖" in special_prompt_text(match_special_user(special_users, "1001", "别人"))
-
-    owner_only = {
-        "群主": {
-            "user_id": "1001",
+        "小栎主人": {
+            "user_id": "3624487365",
             "match_by_id_only": True,
-            "nickname": "主人",
-            "aliases": ["群主"],
+            "nickname": "小栎主人",
+            "aliases": ["小栎主人", "主人"],
+            "attitude": "对小栎主人温柔暖心、绝对信赖",
         }
     }
-    assert match_special_user(owner_only, "1001", "普通昵称")["key"] == "群主"
-    assert match_special_user(owner_only, "2002", "主人") is None
+
+    assert match_special_user(special_users, "3624487365", "任何昵称")["key"] == "小栎主人"
+    assert match_special_user(special_users, "3624487365", "群主")["key"] == "小栎主人"
+    assert match_special_user(special_users, "2002", "群主") is None
+    assert match_special_user(special_users, "2002", "主人") is None
+    assert match_special_user(special_users, "2002", "路人", "小栎主人") is None
+    assert "温柔暖心" in special_prompt_text(match_special_user(special_users, "3624487365", "任何昵称"))
 
 
 def test_new_users_are_strangers_and_relationship_grows_with_interaction():
@@ -112,9 +104,9 @@ def test_a_ju_fallback_persona_is_used():
 
     assert persona.get_name() == "阿橘"
     assert persona.persona.get("profile_id") == "a_ju"
-    assert persona.persona["special_users"]["群主"]["user_id"] == "3624487365"
-    assert persona.persona["special_users"]["群主"]["match_by_id_only"] is True
-    assert persona.persona["special_users"]["群主"]["nickname"] == "小栎主人"
+    assert persona.persona["special_users"]["小栎主人"]["user_id"] == "3624487365"
+    assert persona.persona["special_users"]["小栎主人"]["match_by_id_only"] is True
+    assert persona.persona["special_users"]["小栎主人"]["nickname"] == "小栎主人"
     assert persona.persona.get("mbti_knowledge", {}).get("self_type") == "ISFP（冒险家）"
 
 
@@ -138,7 +130,10 @@ def test_system_prompt_contains_relationship_layers_and_mbti_knowledge():
     prompt = persona.build_system_prompt("")
 
     assert "软萌小骄傲" in prompt
-    assert "群主：绝对信赖" in prompt
+    assert "小栎主人:" in prompt or "小栎主人：" in prompt
+    assert "轻度毒舌" in prompt
+    assert "逻辑" in prompt
+    assert "新梗" in prompt or "网络热词" in prompt
     assert "熟悉群友" in prompt
     assert "ISFP（冒险家）" in prompt
     assert "不能把 MBTI 当诊断" in prompt
@@ -169,6 +164,71 @@ def test_persona_style_allows_identity_only_when_asked():
     assert not style.decide("s2", "今天天气不错", "stranger", {"mood": "正常"}, False)["allow_identity_mention"]
 
 
+def test_persona_style_classifies_logic_and_network_new_knowledge():
+    style = PersonaStyleState(trait_anchor_rate=0.0)
+    logic = style.decide("logic", "这个结论有证据吗？是不是偷换概念？", "stranger", {"mood": "正常"}, False)
+    novelty = style.decide("novelty", "这个新梗最近为什么突然流行？", "stranger", {"mood": "正常"}, False)
+
+    assert logic["intent"] == "logic"
+    assert "毒舌" in logic["mode"]
+    assert novelty["intent"] == "current_affairs"
+    assert "网络新知" in novelty["mode"]
+
+
+def test_current_affairs_detects_new_terms_and_parses_rss(monkeypatch):
+    assert CurrentAffairs.is_current_affairs_query("最近的新梗和新知识")
+    assert not CurrentAffairs.is_current_affairs_query("今晚吃什么")
+
+    xml = """<?xml version="1.0"?><rss><channel><item>
+        <title>一个刚出现的网络热词</title><source>示例站</source>
+        <pubDate>Tue, 29 Sep 2026 08:00:00 GMT</pubDate>
+        <link>https://example.com/item</link>
+    </item></channel></rss>""".encode()
+
+    class Response:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def read(self, limit):
+            assert limit == 1_000_000
+            return xml
+
+    monkeypatch.setattr("a_ju_alive_persona.current_affairs.urlopen", lambda *args, **kwargs: Response())
+    reader = CurrentAffairs(auto_inject=False, feed_urls="https://example.com/feed")
+    items = reader._fetch_feed("https://example.com/feed")
+
+    assert items[0]["title"] == "一个刚出现的网络热词"
+    assert items[0]["source"] == "示例站"
+    reader.items = items
+    context = reader.format_context()
+    assert "2026-09-29" in context
+    assert "来源：示例站" in context
+    assert "不要把标题" in context
+
+
+def test_current_affairs_rejects_external_entities(monkeypatch):
+    xml = """<!DOCTYPE rss [ <!ENTITY xxe SYSTEM "file:///secret"> ]>
+    <rss><channel><item><title>&xxe;</title></item></channel></rss>""".encode()
+
+    class Response:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def read(self, limit):
+            return xml
+
+    monkeypatch.setattr("a_ju_alive_persona.current_affairs.urlopen", lambda *args, **kwargs: Response())
+    reader = CurrentAffairs(feed_urls="https://example.com/feed")
+    try:
+        reader._fetch_feed("https://example.com/feed")
+    except ValueError as exc:
+        assert "XML" in str(exc)
+    else:
+        raise AssertionError("DTD/ENTITY should be rejected")
+
+
 def test_dedicated_plugin_has_no_external_bridge_module_or_switch():
     plugin_dir = Path(__file__).resolve().parents[1]
 
@@ -178,8 +238,5 @@ def test_dedicated_plugin_has_no_external_bridge_module_or_switch():
     assert "bridge_allowed_user_id" not in schema
     assert '"default": "3624487365"' in schema
     assert '"default": "小栎主人"' in schema
-
-
-
-
-
+    assert "current_affairs_enabled" in schema
+    assert "current_affairs_feeds" in schema

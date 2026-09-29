@@ -60,6 +60,10 @@ class PersonaStyleState:
     def _classify_intent(message: str) -> str:
         if re.search(r'(mbti|16型|人格类型|[ei][ns][tf][jp])', message, re.I):
             return 'mbti'
+        if re.search(r'(新梗|梗|热梗|热词|流行语|网络用语|网络文化|上网冲浪|新知识|新概念|最近流行|最近大家|刚出来|刚发布|新出的|最新研究|新发现|科普|热点|热搜|时事|新闻|头条|最新|今天|今日|刚刚|近期|本周|政策|发布会|辟谣|股市|行情|选举|战争|地震|台风|赛事|比赛结果|news|latest|today|current)', message, re.I):
+            return 'current_affairs'
+        if re.search(r'(逻辑|反驳|怼|双标|偷换概念|自相矛盾|因果倒置|以偏概全|证据|依据|合理吗|凭什么|怎么证明|怎么看|是不是)', message, re.I):
+            return 'logic'
         if re.search(r'(怎么|如何|为什么|配置|api|url|/v1|密钥|模型|报错|错误|帮|求|教)', message, re.I):
             return 'technical'
         if re.search(r'(累|困|不舒服|难受|难过|烦|焦虑|崩溃|委屈|压力|开心|谢谢|感谢|对不起|抱歉)', message):
@@ -72,6 +76,10 @@ class PersonaStyleState:
     def _mode(intent: str, anchor: bool, special: bool, relation: str) -> str:
         if intent == 'technical':
             return '答题优先，低显性人设'
+        if intent == 'logic':
+            return '先拆逻辑，再轻度毒舌，不攻击人格'
+        if intent == 'current_affairs':
+            return '先核对日期与来源，再解释网络新知或热词'
         if intent == 'mbti':
             return '轻松聊MBTI，给倾向但避免刻板定型'
         if intent == 'emotional':

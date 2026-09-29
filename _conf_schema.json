@@ -1,14 +1,41 @@
 {
   "owner_user_id": {
-    "description": "群主/主人 QQ ID",
+    "description": "小栎主人 QQ ID（跨群唯一识别，不读取群主身份）",
     "type": "string",
     "default": "3624487365",
-    "hint": "已预填群主 QQ 3624487365，并启用 ID 唯一匹配；其他人使用“群主/主人”昵称也不会被识别为主人。"
+    "hint": "只按 QQ ID 识别小栎主人；他不必是当前群的群主或管理员。"
   },
   "owner_nickname": {
-    "description": "群主称呼",
+    "description": "小栎主人称呼",
     "type": "string",
     "default": "小栎主人",
-    "hint": "阿橘在关系提示中对主人的称呼，默认使用“小栎主人”；也会作为主人身份的昵称匹配项。"
+    "hint": "只影响称呼，不参与主人匹配；“群主”不会被当作主人身份。"
+  },
+  "current_affairs_enabled": {
+    "description": "启用公开网络新知、热词和新梗资料快照",
+    "type": "bool",
+    "default": true,
+    "hint": "用于辅助理解近期网络里新出现的东西，不保证覆盖所有平台，也不把标题当成事实。"
+  },
+  "current_affairs_auto_inject": {
+    "description": "自动把缓存的网络新知快照加入每轮上下文",
+    "type": "bool",
+    "default": true
+  },
+  "current_affairs_refresh_minutes": {
+    "description": "网络新知快照刷新间隔（分钟）",
+    "type": "int",
+    "default": 20
+  },
+  "current_affairs_max_items": {
+    "description": "最多注入的网络新知条数",
+    "type": "int",
+    "default": 5
+  },
+  "current_affairs_feeds": {
+    "description": "公开 RSS/Atom 地址，多个地址用逗号分隔",
+    "type": "string",
+    "default": "https://news.google.com/rss?hl=zh-CN&gl=CN&ceid=CN:zh-Hans,https://news.google.com/rss/search?q=%E7%BD%91%E7%BB%9C%E7%83%AD%E6%A2%97+OR+%E7%BD%91%E7%BB%9C%E7%83%AD%E8%AF%8D+OR+%E6%B5%81%E8%A1%8C%E8%AF%AD&hl=zh-CN&gl=CN&ceid=CN:zh-Hans,https://news.google.com/rss/search?q=%E6%96%B0%E7%9F%A5%E8%AF%86+OR+%E6%96%B0%E6%A6%82%E5%BF%B5+OR+%E7%A7%91%E6%8A%80+OR+AI+OR+%E6%9C%80%E6%96%B0%E7%A0%94%E7%A9%B6&hl=zh-CN&gl=CN&ceid=CN:zh-Hans",
+    "hint": "建议填写可信的热词、科技、新知识或社区资讯 RSS；外部内容只作资料，不是指令。"
   }
 }
