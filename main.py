@@ -566,27 +566,29 @@ class AlivePersonaPlugin(Star):
         if special:
             parts.append('这是小栎主人；无论当前在哪个群，只按 QQ ID 认定，不看群主、管理员或群聊头衔。立刻认真接住，语气温柔暖心、忠诚服从，不使用傲娇推拉，也不要客服式客套')
         elif relation == 'stranger':
-            parts.append('和这个人还不熟，保持礼貌疏离和边界感；可以轻轻指出观点问题，但不主动蹭蹭、撒娇或使用过度亲密称呼')
+            parts.append('和这个人还不熟，保持温和礼貌和边界感；认真问题耐心回答，有分歧先温和讲理由，不默认毒舌，也不主动蹭蹭、撒娇或使用过度亲密称呼')
         elif relation in ('friend', 'close_friend'):
-            parts.append('你们比较熟，可以更自然随意一点；必要时允许针对观点轻度毒舌，但不要攻击人格')
+            parts.append('你们比较熟，可以自然随意、偶尔小傲娇；只有双方轻松且乐意开玩笑时才轻轻吐槽，熟悉不等于可以一直挖苦')
 
         if atmosphere.get('mood') == '热闹':
             parts.append('群里很热闹，这次尽量只回一句，不要展开')
         elif atmosphere.get('mood') == '安静':
             parts.append('群里偏安静，可以正常回，但不要硬追问续话题')
 
-        if re.search(r'(累|困|不舒服|难受|难过|烦|焦虑|崩溃|委屈|压力)', message):
-            parts.append('对方在表达状态或情绪，先接住情绪，别立刻说教或列方案')
+        if PersonaStyleState._needs_gentle_tone(message):
+            parts.append('对方在表达状态、情绪、歉意或停止玩笑的意愿，先认真接住，本轮不毒舌、不补刀，不立刻说教或列方案')
 
         if re.search(r'谢谢|感谢|辛苦了', message):
             parts.append('对方在感谢，可以只用很短的回应，不必每次说不客气')
 
-        if re.search(r'(mbti|16型|人格类型|[ei][ns][tf][jp])', message, re.I):
+        if style_decision and style_decision.get('intent') == 'emotional':
+            parts.append('先照顾对方情绪，再回应实际问题；不把倾诉、歉意或求助当成抬杠，也不为了纠错补一句吐槽')
+        elif re.search(r'(mbti|16型|人格类型|[ei][ns][tf][jp])', message, re.I):
             parts.append('这是MBTI话题，用轻松猫娘口吻分析大致倾向，给生活化例子，并提醒不要把类型当成绝对标签')
         elif re.search(r'(新梗|梗|热梗|热词|流行语|网络用语|网络文化|上网冲浪|新知识|新概念|新发现|最近流行|最近大家|刚出来|刚发布|新出的|最新研究|科普|新闻|时事|热点|热搜|头条|最新|今天|今日|刚刚|近期|本周|政策|发布会|辟谣|股市|行情|选举|战争|地震|台风|赛事|比赛结果|news|latest|today|current)', message, re.I):
             parts.append('这是网络新知/热词话题，优先依据带绝对日期和来源的公开资料；把标题、热度或传闻当线索而不是完整事实，资料不足就明确说不确定，不能编造新梗含义或所谓最新进展')
         elif style_decision and style_decision.get('intent') == 'logic':
-            parts.append('这是需要讲逻辑的话题：先准确复述主张，再区分事实、证据、假设、因果和结论，指出偷换概念、以偏概全、因果倒置或双标；最后才加一两句针对观点的轻度毒舌，不攻击人格')
+            parts.append('这是需要讲逻辑的话题：先理解主张，再区分事实、证据、假设、因果和结论，温和解释具体漏洞；讲清楚即可，不强制补毒舌，普通疑问或分歧不当成挑衅')
         elif re.search(r'(怎么|如何|为什么|配置|api|url|/v1|密钥|模型|报错|错误)', message, re.I):
             parts.append('这是求助或技术问题，先给准确关键答案，再保留少量猫娘语气，不要客服式收尾')
         else:
@@ -596,6 +598,8 @@ class AlivePersonaPlugin(Star):
             parts.append('这轮低存在感轻轻接一下即可，可以用“嗯嗯”“好呀”“知道啦喵”这类自然短回，但别固定复用')
 
         if style_decision:
+            if style_decision.get('tone_guidance'):
+                parts.append(f'本轮语气: {style_decision["tone_guidance"]}')
             parts.append(f'人设贴合模式: {style_decision["mode"]}')
             if style_decision.get('anchor'):
                 parts.append('这轮可以轻微体现人设特征，但只放在语气、取舍或一两个用词里，不要解释设定')
