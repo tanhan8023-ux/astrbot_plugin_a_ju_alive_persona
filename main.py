@@ -20,7 +20,8 @@ import logging
 import time
 
 from astrbot.api.star import Context, Star
-from astrbot.api.event import AstrMessageEvent
+from astrbot.api.event import AstrMessageEvent, filter
+from astrbot.api.message_components import At, Plain
 from astrbot.core.agent.message import TextPart
 from astrbot.core.star.register import (
     register_command,
@@ -154,11 +155,49 @@ class AlivePersonaPlugin(Star):
     async def terminate(self):
         logger.info("[阿橘] 插件已停用")
 
+    # ==================== 回复触发 ====================
+
+    def _is_explicitly_addressed(self, event: AstrMessageEvent) -> bool:
+        """只检查本条消息的正文和真正的 @，不读取引用或转发里的内容。"""
+        messages = event.get_messages() or []
+        name = self.persona.get_name().strip() or '阿橘'
+        text = ''.join(part.text for part in messages if isinstance(part, Plain))
+        if name in text:
+            return True
+
+        self_id = str(event.get_self_id() or '')
+        if self_id in ('', '0', 'all'):
+            return False
+        return any(
+            isinstance(part, At) and str(part.qq) == self_id
+            for part in messages
+        )
+
+    def _enforce_reply_trigger(self, event: AstrMessageEvent) -> bool:
+        if self._is_explicitly_addressed(event):
+            return True
+        event.is_at_or_wake_command = False
+        # AstrBot 中 True 表示禁止默认 LLM 请求；同时中止命令等后续处理。
+        event.should_call_llm(True)
+        event.clear_result()
+        event.stop_event()
+        return False
+
+    @filter.event_message_type(filter.EventMessageType.ALL, priority=10000)
+    async def check_reply_trigger(self, event: AstrMessageEvent):
+        """每条消息独立判断；主人、私聊和命令也不绕过显式点名规则。"""
+        if self._enforce_reply_trigger(event):
+            # 点名无需另外配置唤醒前缀；不改变其他插件禁止 LLM 的决定。
+            event.is_wake = True
+            event.is_at_or_wake_command = True
+
     # ==================== LLM 钩子 ====================
 
-    @register_on_llm_request()
+    @register_on_llm_request(priority=10000)
     async def on_llm_request(self, event: AstrMessageEvent, request):
         """在 LLM 请求发出前，注入活人感 system prompt"""
+        if not self._enforce_reply_trigger(event):
+            return
         try:
             user_id = event.get_sender_id()
             user_name = event.get_sender_name()
@@ -264,9 +303,12 @@ class AlivePersonaPlugin(Star):
         except Exception:
             logger.exception("[阿橘] LLM 请求钩子失败，已跳过本轮活人感注入")
 
-    @register_on_llm_response()
+    @register_on_llm_response(priority=10000)
     async def on_llm_response(self, event: AstrMessageEvent, response):
         """在 LLM 回复后，用随机行为修饰"""
+        if not self._enforce_reply_trigger(event):
+            response.completion_text = ''
+            return
         try:
             if not hasattr(response, 'completion_text') or not response.completion_text:
                 return
